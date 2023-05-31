@@ -4,6 +4,12 @@ using System.Threading;
 
 namespace WorkerThreadsLib;
 
+/// <summary>
+/// Basic class used for scheduling operations (represented by <see cref="WorkerOperation"/>) on a thread 
+/// that executes these operations one by one. If no scheduled operations to run, the thread waits for another operation. 
+/// Once scheduled, the thread gets activated and handles the operation immediately. If multiple operations are scheduled, 
+/// then they get queued and will be handled one by one. 
+/// </summary>
 public class WorkerThread
 {
     public const int DefaultMaxQueueSize = 10000;

@@ -2,6 +2,9 @@
 
 namespace WorkerThreadsLib;
 
+/// <summary>
+/// Generic worker operation to be used for scheduling particular types action on the <see cref="WorkerThread"/> instance. 
+/// </summary>
 public class GenericWorkerOperation : WorkerOperation
 {
     protected Action actionToRun;

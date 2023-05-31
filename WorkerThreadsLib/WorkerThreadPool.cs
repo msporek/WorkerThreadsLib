@@ -4,6 +4,10 @@ using System.Linq;
 
 namespace WorkerThreadsLib;
 
+/// <summary>
+/// Class to be used for creating a pool of <see cref="WorkerThread"/> instances. It deals with the logic of scheduling operations 
+/// on the next <see cref="WorkerThread"/> that is available, or has got less work to handle in its queue. 
+/// </summary>
 public class WorkerThreadPool
 {
     private string poolName;
