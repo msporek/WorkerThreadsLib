@@ -49,6 +49,8 @@ public class WorkerThread
 
     public virtual bool TryEnqueue(WorkerOperation request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         lock (queueOfOperations)
         {
             if (queueOfOperations.Count < queueMaxSize)
@@ -81,6 +83,8 @@ public class WorkerThread
 
     public WorkerThread(string threadName, int queueMaxSize = DefaultMaxQueueSize)
     {
+        ArgumentException.ThrowIfNullOrEmpty(threadName, nameof(threadName));
+
         if (queueMaxSize <= 0)
         {
             throw new ArgumentException("\"queueMaxSize\" is supposed to be a positive value.");
@@ -96,7 +100,7 @@ public class WorkerThread
 
     protected virtual void OnOperationCompleted(WorkerOperation workerOperation)
     {
-        EventHandler<GenericEventArgs<WorkerOperation>> handler = OperationCompleted;
+        EventHandler<GenericEventArgs<WorkerOperation>> handler = this.OperationCompleted;
         if (handler != null)
         {
             handler(this, new GenericEventArgs<WorkerOperation>(workerOperation));
@@ -171,8 +175,9 @@ public class WorkerThread
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
+            // TODO: Handle exceptions gracefully. 
         }
         finally
         {
@@ -188,12 +193,9 @@ public class WorkerThread
         }
         catch (Exception ex)
         {
-            // TODO: Pass this information up by an event. 
-            // ACLogger.Instance.Error($"Error occured on running WorkerOperation of key: {operation.OperationKey}.", ex);
+            operation.OperationException = ex;
         }
     }
-
-    private TimeSpan minTimeSpanToWait = TimeSpan.FromSeconds(5);
 
     #endregion
 
