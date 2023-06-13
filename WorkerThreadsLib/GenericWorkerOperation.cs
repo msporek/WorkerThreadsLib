@@ -9,9 +9,19 @@ public class GenericWorkerOperation : WorkerOperation
 {
     protected Action actionToRun;
 
+    /// <summary>
+    /// Constructor creates a new instance of <see cref="GenericWorkerOperation"/> class with the <paramref name="actionToRun"/> provided 
+    /// to it as an argument. 
+    /// </summary>
+    /// 
+    /// <param name="actionToRun">Action to be run.</param>
+    /// 
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="actionToRun"/> is null.</exception>
     public GenericWorkerOperation(Action actionToRun)
         : base()
     {
+        ArgumentNullException.ThrowIfNull(actionToRun);
+
         OperationKey = Guid.NewGuid().ToString("D");
         this.actionToRun = actionToRun;
     }
@@ -25,4 +35,6 @@ public class GenericWorkerOperation : WorkerOperation
     }
 
     public override string OperationKey { get; }
+
+    public override Exception OperationException { get; set; }
 }
