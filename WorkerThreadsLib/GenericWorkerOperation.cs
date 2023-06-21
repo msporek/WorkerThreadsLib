@@ -26,15 +26,21 @@ public class GenericWorkerOperation : WorkerOperation
         this.actionToRun = actionToRun;
     }
 
+    /// <summary>
+    /// Executes the provided action. 
+    /// </summary>
     public override void Run()
     {
-        if (actionToRun != null)
-        {
-            actionToRun();
-        }
+        this.actionToRun();
     }
 
+    /// <summary>
+    /// Operation key to be used for identification of operations. 
+    /// </summary>
     public override string OperationKey { get; }
 
+    /// <summary>
+    /// Exception on running the operation. 
+    /// </summary>
     public override Exception OperationException { get; set; }
 }

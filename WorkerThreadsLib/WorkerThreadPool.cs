@@ -10,31 +10,38 @@ namespace WorkerThreadsLib;
 /// </summary>
 public class WorkerThreadPool
 {
-    private string poolName;
+    private string _poolName;
 
-    private int count = 0;
+    private int _count = 0;
 
-    private List<WorkerThread> threads;
+    private List<WorkerThread> _threads;
 
-    private int lastPushedToWorkerIndex = -1;
+    private int _lastPushedToWorkerIndex = -1;
 
-    private HashSet<string> enqueuedOperationsKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _enqueuedOperationsKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    private object locker = new object();
+    private object _locker = new object();
 
     public WorkerThreadPool(string poolName, int count)
     {
-        this.poolName = poolName;
-        this.count = count;
+        ArgumentNullException.ThrowIfNullOrEmpty(poolName, nameof(poolName));
 
-        threads = new List<WorkerThread>();
-        for (int i = 0; i < this.count; i++)
+        if (count <= 0)
         {
-            WorkerThread workerThread = new WorkerThread($"WorkerThreadPool{this.poolName} {i + 1}", 10000000);
-            workerThread.OperationCompleted += WorkerThread_OperationCompleted;
+            throw new ArgumentException($"The \"{count}\" value should be a positive integer.", nameof(count));
+        }
+
+        this._poolName = poolName;
+        this._count = count;
+
+        this._threads = new List<WorkerThread>();
+        for (int i = 0; i < this._count; i++)
+        {
+            WorkerThread workerThread = new WorkerThread($"WorkerThreadPool{this._poolName} {i + 1}", 10000000);
+            workerThread.OperationCompleted += this.WorkerThread_OperationCompleted;
             workerThread.Start();
 
-            threads.Add(workerThread);
+            this._threads.Add(workerThread);
         }
     }
 
@@ -45,48 +52,48 @@ public class WorkerThreadPool
             return;
         }
 
-        lock (locker)
+        lock (this._locker)
         {
-            enqueuedOperationsKeys.Remove(operation.Data.OperationKey);
+            this._enqueuedOperationsKeys.Remove(operation.Data.OperationKey);
         }
     }
 
     public bool CheckIsAllProcessingCompleted()
     {
-        lock (locker)
+        lock (this._locker)
         {
-            WorkerThread thisThread = threads.FirstOrDefault();
+            WorkerThread thisThread = this._threads.FirstOrDefault();
             return thisThread.CurrentQueueSize == 0 && !thisThread.IsBusy;
         }
     }
 
     public void Schedule(WorkerOperation operation)
     {
-        lock (locker)
+        lock (this._locker)
         {
-            if (enqueuedOperationsKeys.Contains(operation.OperationKey))
+            if (this._enqueuedOperationsKeys.Contains(operation.OperationKey))
             {
                 return;
             }
 
-            int currentIndex = lastPushedToWorkerIndex + 1;
+            int currentIndex = this._lastPushedToWorkerIndex + 1;
             while (true)
             {
-                if (currentIndex >= count)
+                if (currentIndex >= this._count)
                 {
                     currentIndex = 0;
                 }
 
-                if (threads[currentIndex].TryEnqueue(operation))
+                if (this._threads[currentIndex].TryEnqueue(operation))
                 {
-                    enqueuedOperationsKeys.Add(operation.OperationKey);
+                    this._enqueuedOperationsKeys.Add(operation.OperationKey);
                     break;
                 }
 
                 currentIndex++;
             }
 
-            lastPushedToWorkerIndex = currentIndex;
+            this._lastPushedToWorkerIndex = currentIndex;
         }
     }
 }

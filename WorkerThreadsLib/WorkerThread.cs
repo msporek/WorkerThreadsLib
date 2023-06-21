@@ -16,47 +16,36 @@ public class WorkerThread
 
     #region Public properties and methods
 
-    public string ThreadName
-    {
-        get { return thread.Name; }
-    }
+    public string ThreadName => this._thread.Name;
 
-    public int MaxQueueSize
-    {
-        get { return queueMaxSize; }
-    }
+    public int MaxQueueSize => this._queueMaxSize;
 
     public int CurrentQueueSize
     {
         get
         {
-            lock (queueOfOperations)
+            lock (this._queueOfOperations)
             {
-                return queueOfOperations.Count;
+                return this._queueOfOperations.Count;
             }
         }
     }
 
-    public bool IsActive
-    {
-        get { return isActive; }
-    }
+    public bool IsActive => this._isActive;
 
-    public bool IsBusy
-    {
-        get { return isBusy; }
-    }
+    public bool IsBusy => this._isBusy;
 
     public virtual bool TryEnqueue(WorkerOperation request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        lock (queueOfOperations)
+        lock (this._queueOfOperations)
         {
-            if (queueOfOperations.Count < queueMaxSize)
+            if (this._queueOfOperations.Count < this._queueMaxSize)
             {
-                queueOfOperations.AddLast(request);
-                actionEnqueued.Set();
+                this._queueOfOperations.AddLast(request);
+                
+                this._actionEnqueued.Set();
 
                 return true;
             }
@@ -69,12 +58,12 @@ public class WorkerThread
 
     public void Start()
     {
-        thread.Start();
+        this._thread.Start();
     }
 
     public void Stop()
     {
-        threadStopped.Set();
+        this._threadStopped.Set();
     }
 
     #endregion
@@ -90,10 +79,9 @@ public class WorkerThread
             throw new ArgumentException("\"queueMaxSize\" is supposed to be a positive value.");
         }
 
-        this.queueMaxSize = queueMaxSize;
+        this._queueMaxSize = queueMaxSize;
 
-        thread = new Thread(Run);
-        thread.Name = threadName;
+        this._thread = new Thread(this.Run) { Name = threadName };
     }
 
     public event EventHandler<GenericEventArgs<WorkerOperation>> OperationCompleted;
@@ -114,19 +102,19 @@ public class WorkerThread
     private WorkerOperation TakeNextRequestFromQueue()
     {
         WorkerOperation request = null;
-        lock (queueOfOperations)
+        lock (this._queueOfOperations)
         {
             // If the queue is not empty - try to get its first item and remove it from the queue
-            if (queueOfOperations.Count > 0)
+            if (this._queueOfOperations.Count > 0)
             {
-                request = queueOfOperations.First.Value;
-                queueOfOperations.RemoveFirst();
+                request = this._queueOfOperations.First.Value;
+                this._queueOfOperations.RemoveFirst();
             }
 
             // If the queue is empty after removing first item - we need to reset methodEnqueued_
-            if (queueOfOperations.Count == 0)
+            if (this._queueOfOperations.Count == 0)
             {
-                actionEnqueued.Reset();
+                this._actionEnqueued.Reset();
             }
         }
 
@@ -140,10 +128,10 @@ public class WorkerThread
     {
         try
         {
-            isActive = true;
+            this._isActive = true;
 
-            WaitHandle[] eventHandles = new WaitHandle[] { threadStopped, actionEnqueued };
-            while (isActive)
+            WaitHandle[] eventHandles = new WaitHandle[] { this._threadStopped, this._actionEnqueued };
+            while (this._isActive)
             {
                 int index = WaitHandle.WaitAny(eventHandles);
                 switch (index)
@@ -151,23 +139,23 @@ public class WorkerThread
                     case 0:
                         {
                             // Thread was stopped, change IsActive to false and terminate it
-                            isActive = false;
+                            this._isActive = false;
                             break;
                         }
                     case 1:
                         {
                             // There is a new method to be executed - taking it from the queue
-                            WorkerOperation nextRequest = TakeNextRequestFromQueue();
+                            WorkerOperation nextRequest = this.TakeNextRequestFromQueue();
 
                             // If method was successfully got from the queue - invoking it
                             if (nextRequest != null)
                             {
-                                isBusy = true;
+                                this._isBusy = true;
 
-                                RunOperation(nextRequest);
-                                OnOperationCompleted(nextRequest);
+                                this.RunOperation(nextRequest);
+                                this.OnOperationCompleted(nextRequest);
 
-                                isBusy = false;
+                                this._isBusy = false;
                             }
 
                             break;
@@ -181,7 +169,7 @@ public class WorkerThread
         }
         finally
         {
-            isBusy = false;
+            this._isBusy = false;
         }
     }
 
@@ -202,21 +190,23 @@ public class WorkerThread
     #region Private fields
 
     // Max queue size. 
-    protected int queueMaxSize = 1;
+    protected int _queueMaxSize = 1;
 
     // Thread object. 
-    protected Thread thread = null;
+    protected Thread _thread = null;
 
     // Is this thread active and busy. 
-    protected bool isActive = false;
-    protected bool isBusy = false;
+    protected bool _isActive = false;
+    protected bool _isBusy = false;
 
-    // Some thread synchronization objects. 
-    protected ManualResetEvent actionEnqueued = new ManualResetEvent(false);
-    protected ManualResetEvent threadStopped = new ManualResetEvent(false);
+    // Thread synchronization object that indicates when a new action has been queued to wake up the thread and have it run it. 
+    protected ManualResetEvent _actionEnqueued = new ManualResetEvent(false);
+
+    // Thread synchronization object that indicates when the thread stop has been requested. 
+    protected ManualResetEvent _threadStopped = new ManualResetEvent(false);
 
     // Queue of methods to be invoked. 
-    protected LinkedList<WorkerOperation> queueOfOperations = new LinkedList<WorkerOperation>();
+    protected LinkedList<WorkerOperation> _queueOfOperations = new LinkedList<WorkerOperation>();
 
     #endregion
 }
