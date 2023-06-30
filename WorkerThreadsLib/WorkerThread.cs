@@ -12,14 +12,26 @@ namespace WorkerThreadsLib;
 /// </summary>
 public class WorkerThread
 {
+    /// <summary>
+    /// Represents the default value for the maximum length of the queue with scheduled operations. 
+    /// </summary>
     public const int DefaultMaxQueueSize = 10000;
 
     #region Public properties and methods
 
+    /// <summary>
+    /// Gets name of this <see cref="WorkerThread"/> instance. 
+    /// </summary>
     public string ThreadName => this._thread.Name;
 
+    /// <summary>
+    /// Gets value indicating the max number of queue lenght that this thread supports. 
+    /// </summary>
     public int MaxQueueSize => this._queueMaxSize;
 
+    /// <summary>
+    /// Gets the current length of queue of scheduled operations. 
+    /// </summary>
     public int CurrentQueueSize
     {
         get
@@ -31,10 +43,26 @@ public class WorkerThread
         }
     }
 
+    /// <summary>
+    /// Gets value indicating whether the thread is active (i.e. true if the thread was started and was not stopped, otherwise false). 
+    /// </summary>
     public bool IsActive => this._isActive;
 
+    /// <summary>
+    /// Gets value indicating if the thread is currently running any operation. 
+    /// </summary>
     public bool IsBusy => this._isBusy;
 
+    /// <summary>
+    /// Method attempts to enqueue the operation by adding it to the queue of scheduled operations. It succeeds if the current length of the 
+    /// queue of operations is less than <see cref="WorkerThread.MaxQueueSize"/>. 
+    /// </summary>
+    /// 
+    /// <param name="request">Operation to be scheduled for execution.</param>
+    /// 
+    /// <returns>True if the <paramref name="request"/> operation was scheduled successfully. Otherwise false. </returns>
+    /// 
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="request"/> is null.</exception>
     public virtual bool TryEnqueue(WorkerOperation request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -56,11 +84,17 @@ public class WorkerThread
         }
     }
 
+    /// <summary>
+    /// Method starts the thread and makes it active. 
+    /// </summary>
     public void Start()
     {
         this._thread.Start();
     }
 
+    /// <summary>
+    /// Method stops the thread if it is running. 
+    /// </summary>
     public void Stop()
     {
         this._threadStopped.Set();
@@ -70,6 +104,16 @@ public class WorkerThread
 
     #region Constructors
 
+    /// <summary>
+    /// Constructor creates a new instance of <see cref="WorkerThread"/> class initializing its properties with the provided arguments. 
+    /// </summary>
+    /// 
+    /// <param name="threadName">Name to assign to the thread.</param>
+    /// <param name="queueMaxSize">Maximum number of operations that can be scheduled on the thread queue.</param>
+    /// 
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="threadName"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="threadName"/> is empty string, or if <paramref name="queueMaxSize"/> 
+    /// equals zero or is less than zero.</exception>
     public WorkerThread(string threadName, int queueMaxSize = DefaultMaxQueueSize)
     {
         ArgumentException.ThrowIfNullOrEmpty(threadName, nameof(threadName));
@@ -84,10 +128,23 @@ public class WorkerThread
         this._thread = new Thread(this.Run) { Name = threadName };
     }
 
+    /// <summary>
+    /// Event fired when a particular operation has been completed. It carries details of the operation with it (represented as 
+    /// an instance of the <see cref="WorkerOperation"/> class). 
+    /// </summary>
     public event EventHandler<GenericEventArgs<WorkerOperation>> OperationCompleted;
 
+    /// <summary>
+    /// Method raises <see cref="WorkerThread.OperationCompleted"/> event for the provided <paramref name="workerOperation"/>. 
+    /// </summary>
+    /// 
+    /// <param name="workerOperation">Operation that has been completed.</param>
+    /// 
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="workerOperation"/> is null.</exception>
     protected virtual void OnOperationCompleted(WorkerOperation workerOperation)
     {
+        ArgumentNullException.ThrowIfNull(workerOperation);
+
         EventHandler<GenericEventArgs<WorkerOperation>> handler = this.OperationCompleted;
         if (handler != null)
         {
@@ -99,7 +156,7 @@ public class WorkerThread
 
     #region Protected and private methods
 
-    private WorkerOperation TakeNextRequestFromQueue()
+    protected virtual WorkerOperation TakeNextRequestFromQueue()
     {
         WorkerOperation request = null;
         lock (this._queueOfOperations)
@@ -124,7 +181,7 @@ public class WorkerThread
     /// <summary>
     /// Main method of the thread. 
     /// </summary>
-    private void Run()
+    protected virtual void Run()
     {
         try
         {
